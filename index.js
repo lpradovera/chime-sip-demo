@@ -9,35 +9,23 @@ const { RestClient } = require('@signalwire/compatibility-api');
 
 
 app.post("/connect", async (req, res, next) => {
+  // set up the signalwire client to generate XML later
   var response = new RestClient.LaML.VoiceResponse();
+  // note that we are hardcoding the meeting ID here, but you can use the meeting ID from the request or somewhere else
+  // same goes for the user name
   token_request = await axios.post(`${process.env.TOKEN_ENDPOINT}join?title=${process.env.MEETING_ID}&name=SIPUser&region=us-east-1`, {});
   console.log(token_request.data.JoinInfo)
   var token = token_request.data.JoinInfo.Attendee.Attendee.JoinToken;
   var meetingId = token_request.data.JoinInfo.Meeting.Meeting.MeetingId;
+  // the number should ALWAYS be the same, but the token and meeting ID will change
+  // https://docs.aws.amazon.com/chime-sdk/latest/dg/mtgs-sdk-cvc.html
+  // X-chime-meeting-id is needed if you are using a non-zoned connector URL
   var url = `sip:+17035550122@${process.env.SIP_HOST_ADDRESS};transport=tls?X-chime-join-token=${token}&X-chime-meeting-id=${meetingId}`
   console.log("dialing: " + url);
+
+  // use the SignalWire client to generate the XML
   const dial = response.dial({callerId: 'sip:+12019712404@sip.signalwire.com'});
   dial.sip(url);
-
-  // var response = new RestClient.LaML.VoiceResponse();
-  // if (req.body.Digits) {
-  //   if (req.body.Digits == '1234') {
-  //     response.say('Connecting you now');
-  //     token_request = await axios.post(`${process.env.TOKEN_ENDPOINT}join?title=${process.env.MEETING_ID}&name=SIPUser&region=us-east-1`, {});
-  //     var token = token_request.data.JoinInfo.Attendee.Attendee.JoinToken;
-  //     var url = `sip:+17035550122@${process.env.SIP_HOST_ADDRESS};transport=udp;X-chime-join-token=${token}`
-  //     console.log("dialing: " + url);
-  //     const dial = response.dial();
-  //     dial.sip(url);
-
-  //   } else {
-  //     response.say('Sorry, input was invalid');
-  //     response.redirect('/connect')
-  //   }
-  // } else {
-  //   gather = response.gather({ timeout: 5, numDigits: 4 })
-  //   gather.say("Please enter your pin number.")
-  // }
 
   console.log("LAML: " + response.toString());
   res.send(response.toString());
